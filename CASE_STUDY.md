@@ -16,7 +16,7 @@ A Claude-agent pipeline that would, end to end:
 4. Record the result, flag anything that needed my attention, and move
    on to the next.
 
-The goal wasn't "automate away the search" -- it was "spend my time on
+The goal wasn't "automate away the search", it was "spend my time on
 the roles that are actually worth a custom cover letter, and let a
 cheap automated first pass handle the rest." A grad student's time is
 better spent reading papers and writing tailored applications than
@@ -52,7 +52,7 @@ occasionally-wrong script.
 ## What broke, and what I built in response
 
 Over about four months I kept iterating on the same system while
-actually using it -- it ran for real against real job postings, every
+actually using it. It ran for real against real job postings every
 weekday. This is the short list of things that broke and the pattern
 I pulled out of the fix.
 
@@ -94,7 +94,7 @@ other 90% got a free, reproducible, auditable score.
 This was the single worst bug in the first month. The agent was
 supposed to, at the end of a run, emit a line like
 `RESULT:APPLIED:<confirmation_id>`. Sometimes it would emit `APPLIED`
-without actually having clicked submit -- it had gotten confused by a
+without actually having clicked submit. It had gotten confused by a
 prior page, or a validation error had surfaced that it didn't
 recognize, and it would declare victory anyway.
 
@@ -127,7 +127,7 @@ I started setting $5/job. About 10% of jobs would then die
 mid-submit because they exceeded the budget while the agent was
 waiting on a slow portal. Some of them died AFTER the submit click
 had technically gone through but before the confirmation page had
-loaded -- so the DB would record it as failed, and I'd later find
+loaded, so the DB would record it as failed, and I'd later find
 the confirmation email.
 
 **Fix (half of it):** Add a confirmation-signal fallback. If the
@@ -145,7 +145,7 @@ application. Penny-wise is pound-foolish.
 For the agent to submit jobs behind an authenticated ATS (many of
 them require you to log in before you can apply), it had to use
 a Chrome profile where those sites already had session cookies. But
-two workers can't share a profile directory -- Chrome puts a single
+two workers can't share a profile directory, Chrome puts a single
 lock file in there and the second instance crashes.
 
 **Fix:** Clone the real Chrome profile to a per-worker directory on
@@ -163,7 +163,7 @@ That Chrome preferences patching lives in
 
 Some form uploads would briefly and occasionally trigger the
 browser's showOpenFilePicker / showSaveFilePicker API. When that
-fires, Chrome shows the OS native file dialog -- which exists
+fires, Chrome shows the OS native file dialog, which exists
 outside the DOM, which means Playwright cannot interact with it at
 all, and the agent just sits there forever waiting for a click
 target that will never be clickable.
@@ -212,7 +212,7 @@ there's been no stdout for > N minutes, assumes the agent is wedged
 and kills the subprocess.
 
 This is [`AgentWatchdog`](src/claude_frugal_agents/watchdog.py). It's
-the piece I wish I'd built from day one -- it's saved me from a lot
+the piece I wish I'd built from day one. It has saved me from a lot
 of "checked on the pipeline six hours later, turns out the first job
 had hung and nothing else ran" mornings.
 
@@ -225,7 +225,7 @@ citizenship?"
 
 The first version of the agent would confidently invent answers. The
 invented answer was almost always plausible and almost always wrong
-in some non-obvious way -- "how did you hear about this position"
+in some non-obvious way, "how did you hear about this position"
 got answered with "LinkedIn" 80% of the time even though the truth
 was "a GitHub scraper you've never heard of."
 
@@ -313,7 +313,7 @@ re-discovering `kill_process_tree`, `AgentWatchdog`, `FSA_KILL_JS`,
 and `ClaimValidator`. Not discovering them is a tax on the field.
 
 Two, because the most visible Claude-agent work right now is the
-demo-reel kind -- "look, it booked me a flight." That's cool but it
+demo-reel kind, "look, it booked me a flight." That's cool but it
 leaves out the boring 90% of a real production pipeline. This repo
 is the boring 90%. The interesting 10% is still the language model.
 This is what surrounds it.

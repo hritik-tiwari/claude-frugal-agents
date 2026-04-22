@@ -1,65 +1,61 @@
 # claude-frugal-agents
 
-> Production patterns for building Claude agents that don't waste tokens.
+> Patterns I used to keep my Claude agents cheap, fast, and reliable.
 >
-> Battle-tested across 52 real browser-automation runs. The interesting part:
-> 90% of what I built has nothing to do with the LLM itself.
+> Extracted from a browser-automation pipeline I built and ran for 4 months.
+> 52 real end-to-end runs, a lot of bugs I had to design my way out of.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Status: beta](https://img.shields.io/badge/status-beta-orange)](#)
 
-## The thesis
+## Why I built this
 
-When you start building a Claude agent, the temptation is to use the LLM
-for everything. Parse this HTML? Claude. Rank this item? Claude. Validate
-this form submission? Claude.
+When I started writing a Claude agent to do a boring repetitive browser task for me, I did what most tutorials tell you to do: send the page to the model, let it reason about everything, trust the output.
 
-But LLM calls are expensive, slow, and non-deterministic. Over four months
-of iterating on a real production pipeline -- a Claude-driven browser
-agent that submitted 52 real form submissions end to end -- I moved
-**14 distinct sub-tasks** out of the LLM and into pure Python. The
-rough shape of the result:
+That pipeline ran. It also cost me about $10 per task, took 8 to 15 minutes, and roughly one time in three it would confidently report success when the submit button had never actually been clicked.
 
-| Metric                   | LLM-for-everything | Frugal design |
-|--------------------------|--------------------|---------------|
-| Tokens per pipeline run  | ~250K              | ~30K          |
-| Cost per run             | ~$8                | ~$1           |
-| Wall-clock speed         | 1x                 | ~5x           |
-| Determinism              | LLM-variable       | Reproducible  |
+Over the next four months I kept iterating while using it for real work. By the end I'd moved 14 separate sub-tasks out of the LLM and into plain Python. The per-task cost dropped from ~$10 to under $2, speed improved about 5x, and I stopped seeing false-positive completions.
 
-This repo extracts the reusable patterns, stripped of any domain-specific
-logic from the pipeline they came from. See [CASE_STUDY.md](CASE_STUDY.md)
-for the full anonymized story.
+This repo is the reusable patterns I pulled out of that project. They apply to any Claude agent doing browser work, not just mine.
 
-## The 14 things I moved out of the LLM
+| Metric                   | LLM-for-everything | After the cleanup |
+|--------------------------|--------------------|-------------------|
+| Tokens per pipeline run  | ~250K              | ~30K              |
+| Cost per run             | ~$8                | ~$1               |
+| Wall-clock speed         | 1x                 | ~5x               |
+| Determinism              | LLM-variable       | Reproducible      |
 
-| # | Task                                         | Before        | After                                  |
-|---|----------------------------------------------|---------------|----------------------------------------|
-| 1 | Parse HTML job-board tables                  | LLM reasoning | `ScraperBase` + regex / html.parser    |
-| 2 | Rank items by relevance                      | LLM scoring   | `KeywordScorer` with weighted rules    |
-| 3 | Escalate only uncertain rankings to the LLM  | (n/a)         | `KeywordScorer.llm_fallback` hook      |
-| 4 | Deduplicate URLs against prior runs          | LLM compare   | `normalize_url` + SQLite UNIQUE index  |
-| 5 | Validate form fields match profile           | LLM re-read   | `ClaimValidator` + `PRESUBMIT_CHECK`   |
-| 6 | Polarity check ("yes authorized" vs "no")    | LLM judgment  | `polarity_comparator`                  |
-| 7 | Detect agent stalled / hung                  | n/a, just pay | `AgentWatchdog` stall thread           |
-| 8 | Cap wall-clock per agent                     | n/a           | `AgentWatchdog` wall-clock timer       |
-| 9 | Kill browser + node tree on failure          | manual ps     | `kill_process_tree` (3-layer)          |
-| 10| Reclaim zombie CDP ports                     | manual        | `kill_on_port`                         |
-| 11| Reap orphan subprocesses after a crash       | OS tools      | `zombie_cleanup.find_orphans`          |
-| 12| Flag novel questions instead of hallucinate  | LLM invents   | `AnswerCache` + `NEW_QUESTION` marker  |
-| 13| Block the OS file-picker dialog              | agent hangs   | `FSA_KILL_JS` browser preamble         |
-| 14| Live pipeline monitoring                     | tail log      | `monitor.run_dashboard` (Rich)         |
+For the full story, see [CASE_STUDY.md](CASE_STUDY.md).
 
-## Patterns included
+## The 14 tasks I moved out of the LLM
+
+| #  | Task                                         | Before        | After                                   |
+|----|----------------------------------------------|---------------|-----------------------------------------|
+| 1  | Parse HTML job-board tables                  | LLM reasoning | `ScraperBase` + `html.parser` / regex   |
+| 2  | Rank items by relevance                      | LLM scoring   | `KeywordScorer` with weighted rules     |
+| 3  | Escalate only uncertain rankings to the LLM  | (n/a)         | `KeywordScorer.llm_fallback` hook       |
+| 4  | Deduplicate URLs against prior runs          | LLM compare   | `normalize_url` + SQLite UNIQUE index   |
+| 5  | Validate form fields match profile           | LLM re-read   | `ClaimValidator` + `PRESUBMIT_CHECK`    |
+| 6  | Polarity check ("yes authorized" vs "no")    | LLM judgment  | `polarity_comparator`                   |
+| 7  | Detect agent stalled / hung                  | (paid to wait)| `AgentWatchdog` stall thread            |
+| 8  | Cap wall-clock per agent                     | (none)        | `AgentWatchdog` wall-clock timer        |
+| 9  | Kill browser + node tree on failure          | manual `ps`   | `kill_process_tree` (3-layer)           |
+| 10 | Reclaim zombie CDP ports                     | manual        | `kill_on_port`                          |
+| 11 | Reap orphan subprocesses after a crash       | OS tools      | `zombie_cleanup.find_orphans`           |
+| 12 | Flag novel questions instead of hallucinate  | LLM invents   | `AnswerCache` + `NEW_QUESTION` marker   |
+| 13 | Block the OS file-picker dialog              | agent hangs   | `FSA_KILL_JS` browser preamble          |
+| 14 | Live pipeline monitoring                     | tail log      | `monitor.run_dashboard` (Rich)          |
+
+Each row is something I originally wrote Claude-prompt code for, then realized was cheaper, faster, and more reliable as plain Python.
+
+## The patterns
 
 ### ClaimValidator
 
-Deterministic cross-check before an agent takes an irreversible action.
-Tell the agent to emit a ``PRESUBMIT_CHECK: {...}`` JSON block right
-before it clicks submit; your validator confirms every claimed value
-against expected. Mismatch -> kill the agent mid-action, before the
-bad submit.
+The fix for "the agent reported success but didn't actually submit."
+
+Tell the agent to emit a `PRESUBMIT_CHECK: {...}` JSON block right before any irreversible action. Your validator confirms every claimed value against expected. Mismatch, kill the agent mid-action, before the bad submit.
 
 ```python
 from claude_frugal_agents import (
@@ -91,8 +87,7 @@ Subprocess agents hang. This class wraps any long-running agent with:
 
 1. **Wall-clock deadline** (default 15 min)
 2. **Stdout-stall detector** (kill if silent for N minutes)
-3. **User-supplied kill callback** that you can plug into
-   `kill_process_tree` or any other teardown
+3. **User-supplied kill callback** that you can plug into `kill_process_tree` or any other teardown
 
 ```python
 from claude_frugal_agents import AgentWatchdog
@@ -112,10 +107,9 @@ with AgentWatchdog(
 
 ### AnswerCache
 
-When the agent hits a novel question not in your knowledge base, it
-should **skip and flag**, not invent. This module captures
-`NEW_QUESTION` / `ANSWER_MISMATCH` markers from agent output, persists
-them to disk, and gives you a small approve/reject API.
+When my agent hit a screening question it didn't have a saved answer for, the original version would just make something up. This module makes it flag and skip instead.
+
+Captures `NEW_QUESTION` / `ANSWER_MISMATCH` markers from agent output, persists them to disk, gives you a small approve/reject API. After the run, I go through pending questions once and write real answers; those answers join the knowledge base for next time.
 
 ```python
 from claude_frugal_agents import AnswerCache
@@ -131,9 +125,7 @@ for entry in cache.pending():
 
 ### KeywordScorer
 
-80% of ranking tasks don't need an LLM. Rule-based scorer with explicit
-weight breakdowns, plus an optional LLM-rescore fallback for borderline
-cases only.
+80% of ranking tasks don't need an LLM. Rule-based scorer with explicit weight breakdowns, plus an optional LLM-rescore fallback for borderline cases only.
 
 ```python
 from claude_frugal_agents import KeywordScorer, Rule
@@ -154,11 +146,11 @@ for item in items:
     print(item["title"], "->", result.score, result.reasoning())
 ```
 
+In my real pipeline this ran on every candidate. About 90% got a final score from the rules alone. Only the 10% in the borderline band 5-6 got the LLM fallback.
+
 ### ScraperBase
 
-Generic fetch -> parse -> filter -> dedup -> store pipeline. Subclass it
-for your source; base class handles URL normalization, SQLite dedup,
-and bulk insertion. Zero LLM calls.
+Generic fetch, parse, filter, dedup, store pipeline. Subclass it for your source; base class handles URL normalization, SQLite dedup, and bulk insertion. Zero LLM calls.
 
 ```python
 from claude_frugal_agents.scraper_base import ScraperBase, Candidate
@@ -175,9 +167,7 @@ class MySiteScraper(ScraperBase):
 
 ### browser_helpers
 
-Cross-platform process-tree kill, port-based zombie cleanup, and the
-File System Access API kill JavaScript preamble that prevents native
-OS file-pickers from hanging your browser agent forever.
+Cross-platform process-tree kill, port-based zombie cleanup, and the File System Access API kill JavaScript preamble that prevents native OS file pickers from freezing your browser agent.
 
 ```python
 from claude_frugal_agents.browser_helpers import (
@@ -189,8 +179,7 @@ await page.evaluate(FSA_KILL_JS)  # run on every fresh tab
 
 ### zombie_cleanup
 
-Standalone CLI and importable API for finding and killing orphan
-subprocesses after your pipeline dies.
+Standalone CLI and importable API for finding and killing orphan subprocesses after your pipeline dies. I ran this at the start of every pipeline session because something always wedges eventually.
 
 ```bash
 python -m claude_frugal_agents.zombie_cleanup \
@@ -199,9 +188,7 @@ python -m claude_frugal_agents.zombie_cleanup \
 
 ### monitor
 
-Rich-based live dashboard scaffolding. Plug in callbacks for status
-counts, active workers, and log tail; the module handles the
-redraw loop.
+Rich-based live dashboard scaffolding. Plug in callbacks for status counts, active workers, and log tail; the module handles the redraw loop.
 
 ## Quick start
 
@@ -223,18 +210,11 @@ with AgentWatchdog(kill=my_kill, wall_clock_s=900, stall_s=300) as wd:
 
 ## Runnable example
 
-[`examples/form_filler_demo/`](examples/form_filler_demo/) shows the
-patterns working together on a local HTML form -- no external site
-involved. A Claude agent fills the form; the validator checks it; the
-watchdog ensures it can't hang; the answer-cache handles a novel
-question. Runs in under a minute.
+[`examples/form_filler_demo/`](examples/form_filler_demo/) shows these patterns working together on a local HTML form. No external site involved. A Claude agent fills the form; the validator checks it; the watchdog ensures it can't hang; the answer-cache handles a novel question. Runs in under a minute.
 
 ## Case study
 
-See [CASE_STUDY.md](CASE_STUDY.md) for the anonymized story of the
-52-submission pipeline this repo was extracted from -- the naive
-starting point, what broke, what I extracted into patterns, what I'd
-do differently.
+[CASE_STUDY.md](CASE_STUDY.md) has the anonymized story of the 52-submission pipeline this was extracted from: the naive starting point, the bugs I hit, what I'd do differently.
 
 ## Testing
 
@@ -247,13 +227,12 @@ pytest
 
 ## License
 
-MIT (c) 2026 Hritik Tiwari -- see [LICENSE](LICENSE).
+MIT © 2026 Hritik Tiwari, see [LICENSE](LICENSE).
 
 ## Disclaimer
 
-This repository demonstrates agent-engineering patterns. The case study
-describes a browser-automation pipeline as the motivating use case. If
-you adapt these patterns for automated form submission on third-party
-sites, be aware that many platforms prohibit automation in their Terms
-of Service. Users assume full responsibility for how they apply these
-techniques; nothing here is legal or policy advice.
+This repo demonstrates agent-engineering patterns. The case study describes a browser-automation pipeline as the motivating use case. If you adapt these patterns for automated form submission on third-party sites, be aware that many platforms prohibit automation in their Terms of Service. You assume full responsibility for how you apply these techniques. Nothing here is legal or policy advice.
+
+## Author
+
+Built by [Hritik Tiwari](https://github.com/hritik-tiwari) during my MS in Statistics at Purdue while running the pipeline against real internship postings. If you find this useful or want to talk about Claude agents, open an issue or reach out.
