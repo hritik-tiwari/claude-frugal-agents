@@ -1,0 +1,13 @@
+demo form at http://127.0.0.1:NNNNN/demo_form.html
+=== running agent ===
+agent: page loaded
+NEW_QUESTION: {"question": "Why do you want this role?", "draft_answer": "skipped pending human review"}
+PRESUBMIT_CHECK: {"email": "ada.lovelace@example.com", "years": "1-3 years"}
+=== /agent ===
+flagged 1 novel question(s) for review; will NOT submit
+  pending: Why do you want this role?
+
+=== summary ===
+submitted: False
+novel questions pending review: 1
+cache file: .../examples/form_filler_demo/novel_questions.json
