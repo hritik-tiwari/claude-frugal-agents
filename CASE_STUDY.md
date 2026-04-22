@@ -296,11 +296,11 @@ every possible variant of every data source. It was 2000 lines of
 Python I mostly threw away. Start with "what's the minimum that
 works for today's data" and let real edge cases justify new code.
 
-**Write down the patterns as you find them.** That's what this repo
-is. If I'd been extracting these modules into a clean file from the
-beginning instead of cleaning up all at once at the end, the private
-project would've been smaller and this public one would have been
-easier to pull out.
+**Write down the patterns as you find them.** A one-file running
+notes doc of "things I just learned" would have saved me hours of
+archaeology when I finally went to clean this up. Future-me would
+have written the public repo one paragraph at a time, instead of
+in a weekend.
 
 ## Why open-source this
 
